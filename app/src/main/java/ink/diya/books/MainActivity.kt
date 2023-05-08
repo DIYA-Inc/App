@@ -2,13 +2,19 @@ package ink.diya.books
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class MainActivity : ComponentActivity() {
@@ -25,8 +31,10 @@ class MainActivity : ComponentActivity() {
 
         webView.loadUrl("https://diya.ink/")
         webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
         webView.addJavascriptInterface(WebAppInterface(this), "Android")
         webView.webViewClient = WebViewClient()
+        webView.webChromeClient = webChromeClient
 
         swipeRefreshLayout.setOnRefreshListener {
             webView.reload()
@@ -44,6 +52,44 @@ class MainActivity : ComponentActivity() {
             return true
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private var filePathCallbackFromWebView: ValueCallback<Array<Uri>>? = null
+
+    /**
+     * Handle the file chooser response from the activity
+     */
+    private val pickFile: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val data: Intent? = result.data
+                val uri = data?.data
+                if (uri != null) {
+                    filePathCallbackFromWebView?.onReceiveValue(arrayOf(uri))
+                } else {
+                    filePathCallbackFromWebView?.onReceiveValue(null)
+                }
+            } else {
+                filePathCallbackFromWebView?.onReceiveValue(null)
+            }
+    }
+
+    /**
+     * Handle the file chooser from the WebView
+     */
+    private var webChromeClient = object : WebChromeClient() {
+        override fun onShowFileChooser(
+            webView: WebView?,
+            filePathCallback: ValueCallback<Array<Uri>>?,
+            fileChooserParams: FileChooserParams?
+        ): Boolean {
+            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                type = "application/epub+zip"
+            }
+            pickFile.launch(intent)
+            filePathCallbackFromWebView = filePathCallback
+            return true
+        }
     }
 }
 
