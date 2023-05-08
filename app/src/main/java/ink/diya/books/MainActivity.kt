@@ -32,7 +32,7 @@ class MainActivity : ComponentActivity() {
         webView.loadUrl("https://diya.ink/")
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        webView.addJavascriptInterface(WebAppInterface(this), "Android")
+        webView.addJavascriptInterface(WebAppInterface(this, webView), "Android")
         webView.webViewClient = WebViewClient()
         webView.webChromeClient = webChromeClient
 
@@ -93,10 +93,35 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-class WebAppInterface(private val mContext: Context) {
-    /** Show a toast from the web page */
+/** Methods for allowing JavaScript to access android specific methods */
+class WebAppInterface(private val mContext: Context, private val webView: WebView) {
+    /**
+     * Show a toast from the web page
+     *
+     * @param toast The message to tell the user
+     */
     @JavascriptInterface
     fun showToast(toast: String) {
         Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Show a confirm dialog from the web page
+     *
+     * @param message The question to ask the user
+     * @param yesFunc The javascript function to execute if the user clicks yes
+     * @param noFunc The javascript function to execute if the user clicks no
+     */
+    @JavascriptInterface
+    fun showConfirmDialog(message: String, yesFunc: String, noFunc: String) {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(mContext)
+        builder.setMessage(message)
+            .setPositiveButton("Yes") { _, _ ->
+                webView.post { webView.evaluateJavascript(yesFunc, null) }
+            }
+            .setNegativeButton("No") { _, _ ->
+                webView.post { webView.evaluateJavascript(noFunc, null) }
+            }
+        builder.create().show()
     }
 }
