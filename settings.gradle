@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "DIYA Books"
+rootProject.name = "DIYA Bookify"
 include ':app'
 include ':api'
